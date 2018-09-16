@@ -186,6 +186,7 @@ class Event_SyncContinuously(Command):
 
     event:sync-continuously
         {email_id_mappings* : email and trello ID mapping in '<email>:<id>' format}
+        {--first-updated-min= : Min updated time for first sync}
 
 
     """
@@ -200,18 +201,30 @@ class Event_SyncContinuously(Command):
             .to_list()
         )
 
+        first_updated_min = (
+            Optional
+            .from_value(self.option('first-updated-min'))
+            .map(pdl.parse)
+            .get_or_none()
+        )
+
+        self.sync(first_updated_min)
+
         now = pdl.now()
         now = now.set(second=0, microsecond=0)
         last_minute = now.subtract(minutes=1)
         while True:
-            for email, trello_id in self.email_id_mappings:
-                self.call('event:sync-recent-updated', [
-                    ('calendar_id', email),
-                    ('updated_min', last_minute.isoformat()),
-                    ('assignee', trello_id)
-                ])
             last_minute = last_minute.add(minutes=1)
+            self.sync(last_minute)
             time.sleep(60)
+
+    def sync(self, updated_min):
+        for email, trello_id in self.email_id_mappings:
+            self.call('event:sync-recent-updated', [
+                ('calendar_id', email),
+                ('updated_min', updated_min.isoformat()),
+                ('assignee', trello_id)
+            ])
 
 
 cli_app = Application()
