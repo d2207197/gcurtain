@@ -1,0 +1,35 @@
+[tool.poetry]
+name = "gcurtain"
+version = "0.1.0"
+description = ""
+authors = ["顏孜羲 <joseph.yen@gmail.com>"]
+
+[tool.poetry.dependencies]
+python = "*"
+google-api-python-client = "^1.7"
+oauth2client = "^4.1"
+google-auth = "^1.5"
+google-auth-oauthlib = "^0.2.0"
+google-auth-httplib2 = "^0.0.3"
+apistar = "^0.5.41"
+pprintpp = "^0.4.0"
+pp-ez = "^0.2.0"
+pendulum = "^2.0"
+cleo = "^0.6.8"
+py-trello = "^0.11.3"
+carriage = "^0.4.14"
+confect = "^0.2.7"
+sqlalchemy = "^1.2"
+
+[tool.poetry.dev-dependencies]
+pytest = "^3.0"
+flake8 = "^3.5"
+pylint = "^2.1"
+autopep8 = "^1.4"
+mypy = "^0.620.0"
+autoflake = "^1.2"
+isort = "^4.3"
+importmagic = "^0.1.7"
+epc = "^0.0.5"
+ptipython = "^1.0"
+ipython = "^6.5"
