@@ -1,12 +1,13 @@
 # coding: utf-8
 import re
+import time
 
 import pendulum as pdl
 import pp
-from carriage import Optional
+from carriage import Optional, Row, Stream
 from cleo import Application, Command
 
-from . import calendar, db, trello
+from . import calendar, db, http, trello
 
 
 class Event_ListRecentUpdated(Command):
@@ -79,7 +80,7 @@ class Event_SyncRecentUpdated(Command):
         if (event['summary'].startswith('量')):
             if trello_mapping is None:
                 self.add_measuring_card(
-                    sess, self.calendar_id, event, self.assignee)
+                    sess, event)
 
             elif trello_mapping.calendar_id != self.calendar_id:
                 self.info('Updating measuring card assignee')
@@ -107,8 +108,8 @@ class Event_SyncRecentUpdated(Command):
             calendar_id=self.calendar_id,
             calendar_event_type=db.EventType.measuring,
             calendar_event_id=event['id'])
-        self.info(pp.fmt(card.__dict__))
-        self.info(pp.fmt(mapping))
+        pp(card.__dict__)
+        pp(mapping)
         sess.add(mapping)
 
 
@@ -160,6 +161,59 @@ class List_ListAll(Command):
             pp(tlist.__dict__)
 
 
+class HTTP_Serve(Command):
+    """
+    Serve HTTP API
+
+    http:serve
+        {bind=127.0.0.1 : bind IP address}
+        {port=8000 : port }
+        {--debugger : use debugger}
+    """
+
+    def handle(self):
+        bind = self.argument('bind')
+        port = int(self.argument('port'))
+        use_debugger = self.option('debugger')
+        http.app.serve(
+            bind, port,
+            use_debugger=use_debugger)
+
+
+class Event_SyncContinuously(Command):
+    """
+    Sync event continuously
+
+    event:sync-continuously
+        {email_id_mappings* : email and trello ID mapping in '<email>:<id>' format}
+
+
+    """
+
+    def handle(self):
+        self.email_id_mappings = (
+            Stream(self.argument('email_id_mappings'))
+            .map(
+                lambda s: Row.from_values(
+                    s.split(':', 1),
+                    fields=('email', 'trello_id')))
+            .to_list()
+        )
+
+        now = pdl.now()
+        now = now.set(second=0, microsecond=0)
+        last_minute = now.subtract(minutes=1)
+        while True:
+            for email, trello_id in self.email_id_mappings:
+                self.call('event:sync-recent-updated', [
+                    ('calendar_id', email),
+                    ('updated_min', last_minute.isoformat()),
+                    ('assignee', trello_id)
+                ])
+            last_minute = last_minute.add(minutes=1)
+            time.sleep(60)
+
+
 cli_app = Application()
 cli_app.add(Event_ListRecentUpdated())
 cli_app.add(DB_Init())
@@ -167,3 +221,5 @@ cli_app.add(Event_SyncRecentUpdated())
 cli_app.add(Card_ListAll())
 cli_app.add(List_ListAll())
 cli_app.add(DB_recreate())
+cli_app.add(HTTP_Serve())
+cli_app.add(Event_SyncContinuously())
