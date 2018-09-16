@@ -3,6 +3,7 @@ import re
 
 import pendulum as pdl
 import pp
+from carriage import Optional
 from cleo import Application, Command
 
 from . import calendar, db, trello
@@ -40,44 +41,57 @@ class Event_SyncRecentUpdated(Command):
     """
 
     def handle(self):
-        calendar_id = self.argument('calendar_id')
-        updated_min = self.argument('updated_min')
-        assignee = self.argument('assignee')
-        if assignee is not None:
-            assignee = trello.client.get_member('may21282655')
+        self.calendar_id = self.argument('calendar_id')
+        self.updated_min = pdl.parse(self.argument('updated_min'))
 
-        updated_min = pdl.parse(updated_min)
+        self.assignee = (
+            Optional
+            .from_value(self.argument('assignee'))
+            .map(lambda assignee: trello.client.get_member(assignee))
+            .get_or_none()
+        )
+
         self.info(
-            f'Calendar Id: {calendar_id}. Events Updated after {updated_min}')
-        self.sync(calendar_id, updated_min, assignee)
-
-    def sync(self, calendar_id, updated_min, assignee):
-        result = calendar.client.list_recent_updated(calendar_id, updated_min)
-        self.info('Calendar ')
-        pp.fmt(result)
+            f'Calendar Id: {self.calendar_id}. '
+            f'Events Updated after {self.updated_min}')
+        result = calendar.client.list_recent_updated(self.calendar_id,
+                                                     self.updated_min)
+        pp(result)
         items = result.get('items', [])
-
         sess = db.Session()
-
         for event in items:
-            event_id = event['id']
-            if event['status'] == 'confirmed':
-                trello_mapping = (
-                    sess.query(db.TrelloCalendarMapping)
-                    .filter_by(calendar_event_id=event_id)
-                    .one_or_none())
-
-                self.info(pp.fmt(trello_mapping))
-                if (trello_mapping is None and
-                        event['summary'].startswith('量')):
-
-                    self.add_measuring_card(sess, calendar_id, event, assignee)
+            if event['status'] == 'confirmed' and \
+               event['summary'].startswith('量'):
+                self.info(f'Handling event {pp.fmt(event)}')
+                self.handle_measuring_event(sess, event)
 
         sess.commit()
         sess.close()
 
-    def add_measuring_card(self, sess, calendar_id, event, assignee):
-        self.info('adding measuring card')
+    def handle_measuring_event(self, sess, event):
+        trello_mapping = (
+            sess.query(db.TrelloCalendarMapping)
+            .filter_by(calendar_event_id=event['id'])
+            .one_or_none())
+
+        self.info('Existing Event <-> Card Mappings:')
+        pp(trello_mapping)
+        if (event['summary'].startswith('量')):
+            if trello_mapping is None:
+                self.add_measuring_card(
+                    sess, self.calendar_id, event, self.assignee)
+
+            elif trello_mapping.calendar_id != self.calendar_id:
+                self.info('Updating measuring card assignee')
+                trello_mapping.calendar_id = self.calendar_id
+                card = trello.client.get_card(trello_mapping.card_id)
+                card.assign(self.assignee)
+                card.change_pos('top')
+            else:
+                self.info('Nothing to do for event {event["summary"]}')
+
+    def add_measuring_card(self, sess, event):
+        self.info('Adding measuring card')
         measuring_tlist = trello.agent.tlist_of_name_opt('丈量').value
         card_name = re.match(r'量\W*(\w.*)', event['summary']).groups()[0]
 
@@ -86,11 +100,11 @@ class Event_SyncRecentUpdated(Command):
             card_name,
             position='top',
             desc=desc,
-            assign=[assignee]
+            assign=[self.assignee]
         )
         mapping = db.TrelloCalendarMapping(
             card_id=card.id,
-            calendar_id=calendar_id,
+            calendar_id=self.calendar_id,
             calendar_event_type=db.EventType.measuring,
             calendar_event_id=event['id'])
         self.info(pp.fmt(card.__dict__))
