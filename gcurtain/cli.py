@@ -48,7 +48,7 @@ class Event_SyncRecentUpdated(Command):
         self.assignee = (
             Optional
             .from_value(self.argument('assignee'))
-            .map(lambda assignee: trello.client.get_member(assignee))
+            .map(lambda assignee: trello.agent.get_member(assignee))
             .get_or_none()
         )
 
@@ -89,7 +89,7 @@ class Event_SyncRecentUpdated(Command):
                 card.assign(self.assignee)
                 card.change_pos('top')
             else:
-                self.info('Nothing to do for event {event["summary"]}')
+                self.info(f'Nothing to do for event {event["summary"]}')
 
     def add_measuring_card(self, sess, event):
         self.info('Adding measuring card')
@@ -175,6 +175,7 @@ class HTTP_Serve(Command):
         bind = self.argument('bind')
         port = int(self.argument('port'))
         use_debugger = self.option('debugger')
+        print(use_debugger)
         http.app.serve(
             bind, port,
             use_debugger=use_debugger)
@@ -210,7 +211,7 @@ class Event_SyncContinuously(Command):
 
         self.sync(first_updated_min)
 
-        now = pdl.now()
+        now = pdl.now(tz='Asia/Taipei')
         now = now.set(second=0, microsecond=0)
         last_minute = now.subtract(minutes=1)
         while True:

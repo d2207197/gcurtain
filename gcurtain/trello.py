@@ -14,9 +14,15 @@ class TrelloAgent:
     def __init__(self, board):
         self.board = board
         self.update_tlists()
+        self.members = {}
 
     def update_tlists(self):
         self.tlists = self.board.all_lists()
+
+    def get_member(self, member_id):
+        if member_id not in self.members:
+            self.members[member_id] = client.get_member(member_id)
+        return self.members[member_id]
 
     def tlist_of_name_opt(self, name):
         return Stream(self.tlists).find_opt(lambda tlist: name in tlist.name)

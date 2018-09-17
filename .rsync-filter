@@ -6,3 +6,4 @@
 - *.pyc
 - #*
 - .#*
+- gcurtain.db
