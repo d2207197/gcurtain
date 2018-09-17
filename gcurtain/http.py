@@ -7,12 +7,6 @@ from apistar import App, Route, http, types, validators
 from gcurtain import trello
 
 
-def welcome(name=None):
-    if name is None:
-        return {'message': 'Welcome to API Star!'}
-    return {'message': 'Welcome to API Star, %s!' % name}
-
-
 def calendar_notification(request: http.Request) -> dict:
     print({
         'method': request.method,
