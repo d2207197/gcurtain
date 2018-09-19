@@ -87,7 +87,7 @@ class Event_SyncRecentUpdated(Command):
                 trello_mapping.calendar_id = self.calendar_id
                 card = trello.client.get_card(trello_mapping.card_id)
                 card.assign(self.assignee)
-                card.change_pos('top')
+                card.change_pos('bottom')
             else:
                 self.info(f'Nothing to do for event {event["summary"]}')
 
