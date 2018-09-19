@@ -213,7 +213,7 @@ class Event_SyncContinuously(Command):
 
         now = pdl.now(tz='Asia/Taipei')
         now = now.set(second=0, microsecond=0)
-        last_minute = now.subtract(minutes=1)
+        last_minute = now.subtract(minutes=10)
         while True:
             last_minute = last_minute.add(minutes=1)
             self.sync(last_minute)

@@ -58,7 +58,7 @@ def trello_add_appointment_req(appointment_req: AppointmentRequest):
     appointment_req_tlist = trello.agent.tlist_of_name_opt('預約').value
     card = appointment_req_tlist.add_card(
         name=appointment_req.format_title(),
-        position='top',
+        position='bottom',
         desc=card_desc,
     )
     print('Card added:')
